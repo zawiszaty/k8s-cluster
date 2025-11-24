@@ -1,0 +1,156 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: guestbook-instrumented
+  namespace: guestbook
+data:
+  guestbook.php: |
+    <?php
+    /**
+     * Instrumented Guestbook with OpenTelemetry tracing
+     */
+
+    error_reporting(E_ALL);
+    ini_set('display_errors', 1);
+
+    require __DIR__ . '/vendor/autoload.php';
+
+    // Generate or extract trace ID
+    $trace_id = bin2hex(random_bytes(16));
+    $span_id = bin2hex(random_bytes(8));
+    $start_time = microtime(true);
+
+    // Log with trace context
+    function logWithTrace($message, $trace_id, $span_id) {
+        error_log("[trace_id=$trace_id span_id=$span_id] $message");
+    }
+
+    // Send trace to OpenTelemetry Collector
+    function sendTrace($trace_id, $span_id, $operation, $duration_ms, $attributes = []) {
+        $otel_endpoint = getenv('OTEL_EXPORTER_OTLP_ENDPOINT');
+        if (!$otel_endpoint) {
+            return;
+        }
+
+        $start_time_nano = (int)((microtime(true) - $duration_ms/1000) * 1000000000);
+        $end_time_nano = (int)(microtime(true) * 1000000000);
+
+        $trace_data = [
+            'resourceSpans' => [
+                [
+                    'resource' => [
+                        'attributes' => [
+                            ['key' => 'service.name', 'value' => ['stringValue' => 'guestbook-frontend']]
+                        ]
+                    ],
+                    'scopeSpans' => [
+                        [
+                            'scope' => ['name' => 'guestbook-php'],
+                            'spans' => [
+                                [
+                                    'traceId' => $trace_id,
+                                    'spanId' => $span_id,
+                                    'name' => $operation,
+                                    'kind' => 1, // SPAN_KIND_INTERNAL
+                                    'startTimeUnixNano' => (string)$start_time_nano,
+                                    'endTimeUnixNano' => (string)$end_time_nano,
+                                    'attributes' => array_map(function($k, $v) {
+                                        return ['key' => $k, 'value' => ['stringValue' => $v]];
+                                    }, array_keys($attributes), $attributes),
+                                    'status' => ['code' => 1] // STATUS_CODE_OK
+                                ]
+                            ]
+                        ]
+                    ]
+                ]
+            ]
+        ];
+
+        // Send to OTel Collector via HTTP
+        $ch = curl_init($otel_endpoint . '/v1/traces');
+        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "POST");
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($trace_data));
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            'Content-Type: application/json'
+        ]);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 1);
+        curl_exec($ch);
+        curl_close($ch);
+    }
+
+    if (isset($_GET['cmd']) === true) {
+      $host = 'redis-leader';
+      if (getenv('GET_HOSTS_FROM') == 'env') {
+        $host = getenv('REDIS_LEADER_SERVICE_HOST');
+      }
+
+      header('Content-Type: application/json');
+      header("X-Trace-Id: $trace_id");
+
+      if ($_GET['cmd'] == 'set') {
+        $operation_start = microtime(true);
+        logWithTrace("SET operation started for value: " . $_GET['value'], $trace_id, $span_id);
+
+        $client = new Predis\Client([
+          'scheme' => 'tcp',
+          'host'   => $host,
+          'port'   => 6379,
+        ]);
+
+        $client->set('guestbook', $_GET['value']);
+        $duration = (microtime(true) - $operation_start) * 1000;
+
+        logWithTrace("SET operation completed successfully", $trace_id, $span_id);
+
+        // Send trace to OpenTelemetry
+        sendTrace($trace_id, $span_id, 'SET /guestbook', $duration, [
+          'http.method' => 'GET',
+          'http.url' => $_SERVER['REQUEST_URI'],
+          'operation' => 'set',
+          'value' => $_GET['value'],
+          'redis.host' => $host
+        ]);
+
+        print('{"message": "Updated", "trace_id": "' . $trace_id . '"}');
+      } else {
+        $operation_start = microtime(true);
+        logWithTrace("GET operation started", $trace_id, $span_id);
+
+        $host = 'redis-follower';
+        if (getenv('GET_HOSTS_FROM') == 'env') {
+          $host = getenv('REDIS_FOLLOWER_SERVICE_HOST');
+        }
+        $client = new Predis\Client([
+          'scheme' => 'tcp',
+          'host'   => $host,
+          'port'   => 6379,
+        ]);
+
+        $value = $client->get('guestbook');
+        $duration = (microtime(true) - $operation_start) * 1000;
+
+        logWithTrace("GET operation completed, value: $value", $trace_id, $span_id);
+
+        // Send trace to OpenTelemetry
+        sendTrace($trace_id, $span_id, 'GET /guestbook', $duration, [
+          'http.method' => 'GET',
+          'http.url' => $_SERVER['REQUEST_URI'],
+          'operation' => 'get',
+          'redis.host' => $host
+        ]);
+
+        print('{"data": "' . $value . '", "trace_id": "' . $trace_id . '"}');
+      }
+    } else {
+      phpinfo();
+    }
+    ?>
+  auto_prepend.php: |
+    <?php
+    // Auto-prepend file to add tracing to all requests
+    if (!isset($GLOBALS['trace_id'])) {
+        $GLOBALS['trace_id'] = bin2hex(random_bytes(16));
+        $GLOBALS['span_id'] = bin2hex(random_bytes(8));
+    }
+    ?>

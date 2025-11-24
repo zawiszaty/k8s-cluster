@@ -1,0 +1,85 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: trace-generator-script
+  namespace: monitoring
+data:
+  generate-traces.py: |
+    #!/usr/bin/env python3
+    from opentelemetry import trace
+    from opentelemetry.sdk.trace import TracerProvider
+    from opentelemetry.sdk.trace.export import BatchSpanProcessor
+    from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+    from opentelemetry.sdk.resources import Resource
+    import time
+    import random
+
+    # Configure tracing
+    resource = Resource.create({"service.name": "trace-generator"})
+    provider = TracerProvider(resource=resource)
+    otlp_exporter = OTLPSpanExporter(
+        endpoint="otel-collector:4317",
+        insecure=True
+    )
+    provider.add_span_processor(BatchSpanProcessor(otlp_exporter))
+    trace.set_tracer_provider(provider)
+
+    tracer = trace.get_tracer(__name__)
+
+    services = ["frontend", "backend", "database", "cache"]
+    operations = ["GET", "POST", "PUT", "DELETE"]
+
+    print("Starting trace generator...")
+
+    while True:
+        service = random.choice(services)
+        operation = random.choice(operations)
+
+        with tracer.start_as_current_span(f"{operation} /{service}") as span:
+            span.set_attribute("http.method", operation)
+            span.set_attribute("http.url", f"http://{service}.local")
+            span.set_attribute("service.name", service)
+
+            # Simulate work
+            duration = random.uniform(0.01, 0.5)
+            time.sleep(duration)
+
+            # Create child span
+            with tracer.start_as_current_span(f"process_{service}") as child_span:
+                child_span.set_attribute("operation", "process")
+                time.sleep(random.uniform(0.01, 0.2))
+
+        print(f"Generated trace: {operation} /{service}")
+        time.sleep(random.uniform(1, 5))
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: trace-generator
+  namespace: monitoring
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: trace-generator
+  template:
+    metadata:
+      labels:
+        app: trace-generator
+    spec:
+      containers:
+        - name: trace-generator
+          image: python:3.11-slim
+          command:
+            - /bin/bash
+            - -c
+            - |
+              pip install opentelemetry-api opentelemetry-sdk opentelemetry-exporter-otlp-proto-grpc
+              python /scripts/generate-traces.py
+          volumeMounts:
+            - name: scripts
+              mountPath: /scripts
+      volumes:
+        - name: scripts
+          configMap:
+            name: trace-generator-script

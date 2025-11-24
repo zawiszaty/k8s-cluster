@@ -1,0 +1,20 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: hotrod
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/TWOJE_REPO/k8s-cluster.git  # Zmień na swoje repo
+    targetRevision: HEAD
+    path: cluster/apps/hotrod
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: hotrod
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

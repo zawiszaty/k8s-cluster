@@ -1,0 +1,17 @@
+# Rook Ceph storage data
+rook-data/
+
+# KIND kubeconfig (jeśli będzie lokalny)
+*.kubeconfig
+
+# Temporary files
+*.tmp
+*.swp
+*~
+
+# Secrets (jeśli będą lokalne)
+secrets/
+*.secret
+
+# Downloaded binaries
+bin/

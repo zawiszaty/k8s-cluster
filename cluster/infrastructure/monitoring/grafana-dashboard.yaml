@@ -1,0 +1,152 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboards
+  namespace: monitoring
+data:
+  kubernetes-logs.json: |
+    {
+      "title": "Kubernetes Logs",
+      "uid": "kubernetes-logs",
+      "timezone": "browser",
+      "panels": [
+        {
+          "title": "Logs by Namespace",
+          "type": "logs",
+          "gridPos": {"h": 10, "w": 24, "x": 0, "y": 0},
+          "datasource": {
+            "type": "loki",
+            "uid": "loki-uid"
+          },
+          "targets": [
+            {
+              "expr": "{namespace=~\"$namespace\"}",
+              "refId": "A",
+              "datasource": {
+                "type": "loki",
+                "uid": "loki-uid"
+              }
+            }
+          ],
+          "options": {
+            "showTime": true,
+            "showLabels": true,
+            "sortOrder": "Descending"
+          }
+        },
+        {
+          "title": "Logs by Pod",
+          "type": "logs",
+          "gridPos": {"h": 10, "w": 24, "x": 0, "y": 10},
+          "datasource": {
+            "type": "loki",
+            "uid": "loki-uid"
+          },
+          "targets": [
+            {
+              "expr": "{namespace=~\"$namespace\", pod=~\"$pod\"}",
+              "refId": "A",
+              "datasource": {
+                "type": "loki",
+                "uid": "loki-uid"
+              }
+            }
+          ],
+          "options": {
+            "showTime": true,
+            "showLabels": true,
+            "sortOrder": "Descending"
+          }
+        },
+        {
+          "title": "Error Logs",
+          "type": "logs",
+          "gridPos": {"h": 10, "w": 24, "x": 0, "y": 20},
+          "datasource": {
+            "type": "loki",
+            "uid": "loki-uid"
+          },
+          "targets": [
+            {
+              "expr": "{namespace=~\"$namespace\"} |~ \"(?i)error|exception|fatal|fail\"",
+              "refId": "A",
+              "datasource": {
+                "type": "loki",
+                "uid": "loki-uid"
+              }
+            }
+          ],
+          "options": {
+            "showTime": true,
+            "showLabels": true,
+            "sortOrder": "Descending"
+          }
+        }
+      ],
+      "templating": {
+        "list": [
+          {
+            "name": "namespace",
+            "type": "query",
+            "label": "Namespace",
+            "query": "label_values(namespace)",
+            "datasource": {
+              "type": "loki",
+              "uid": "loki-uid"
+            },
+            "multi": true,
+            "includeAll": true,
+            "allValue": ".+",
+            "current": {
+              "selected": true,
+              "text": "All",
+              "value": "$__all"
+            },
+            "refresh": 1
+          },
+          {
+            "name": "pod",
+            "type": "query",
+            "label": "Pod",
+            "query": "label_values(pod)",
+            "datasource": {
+              "type": "loki",
+              "uid": "loki-uid"
+            },
+            "multi": true,
+            "includeAll": true,
+            "allValue": ".+",
+            "current": {
+              "selected": true,
+              "text": "All",
+              "value": "$__all"
+            },
+            "refresh": 1
+          }
+        ]
+      },
+      "time": {
+        "from": "now-1h",
+        "to": "now"
+      },
+      "refresh": "10s"
+    }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-provider
+  namespace: monitoring
+data:
+  dashboards.yaml: |
+    apiVersion: 1
+    providers:
+      - name: 'default'
+        orgId: 1
+        folder: ''
+        type: file
+        disableDeletion: false
+        updateIntervalSeconds: 10
+        allowUiUpdates: true
+        options:
+          path: /var/lib/grafana/dashboards

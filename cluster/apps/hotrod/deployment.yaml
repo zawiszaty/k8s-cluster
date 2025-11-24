@@ -1,0 +1,88 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hotrod
+  namespace: hotrod
+  labels:
+    app: hotrod
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hotrod
+  template:
+    metadata:
+      labels:
+        app: hotrod
+    spec:
+      containers:
+        - name: hotrod
+          image: jaegertracing/example-hotrod:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+              name: frontend
+            - containerPort: 8081
+              name: customer
+            - containerPort: 8082
+              name: driver
+            - containerPort: 8083
+              name: route
+          env:
+            - name: JAEGER_AGENT_HOST
+              value: otel-collector.monitoring.svc.cluster.local
+            - name: JAEGER_AGENT_PORT
+              value: "6831"
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: http://otel-collector.monitoring.svc.cluster.local:4318
+            - name: OTEL_SERVICE_NAME
+              value: hotrod
+            - name: OTEL_TRACES_EXPORTER
+              value: otlp
+          command:
+            - /go/bin/hotrod-linux
+            - all
+          resources:
+            limits:
+              cpu: 200m
+              memory: 256Mi
+            requests:
+              cpu: 100m
+              memory: 128Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hotrod
+  namespace: hotrod
+  labels:
+    app: hotrod
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8080
+      targetPort: 8080
+      name: frontend
+  selector:
+    app: hotrod
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: hotrod
+  namespace: hotrod
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: hotrod.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: hotrod
+                port:
+                  number: 8080

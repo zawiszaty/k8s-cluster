@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  namespace: guestbook
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: guestbook
+  template:
+    metadata:
+      labels:
+        app: guestbook
+    spec:
+      containers:
+        - name: php-redis
+          image: gcr.io/google-samples/gb-frontend:v5
+          env:
+            - name: GET_HOSTS_FROM
+              value: dns
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: http://otel-collector.monitoring.svc.cluster.local:4318
+            - name: OTEL_SERVICE_NAME
+              value: guestbook-frontend
+            - name: OTEL_TRACES_EXPORTER
+              value: otlp
+            - name: OTEL_LOGS_EXPORTER
+              value: none
+          ports:
+            - containerPort: 80
+          volumeMounts:
+            - name: instrumented-code
+              mountPath: /var/www/html/guestbook.php
+              subPath: guestbook.php
+      volumes:
+        - name: instrumented-code
+          configMap:
+            name: guestbook-instrumented
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend
+  namespace: guestbook
+spec:
+  selector:
+    app: guestbook
+  ports:
+    - port: 80
+      targetPort: 80

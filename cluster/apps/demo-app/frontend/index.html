@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Demo App - Message Board</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📝 Demo Message Board</h1>
+            <p class="subtitle">Simple demo app with Python API + Frontend</p>
+        </header>
+
+        <div class="api-status" id="apiStatus">
+            <div class="status-indicator"></div>
+            <span>Sprawdzam status API...</span>
+        </div>
+
+        <div class="card">
+            <h2>Dodaj wiadomość</h2>
+            <form id="messageForm">
+                <div class="form-group">
+                    <input
+                        type="text"
+                        id="messageInput"
+                        placeholder="Wpisz swoją wiadomość..."
+                        required
+                        autocomplete="off"
+                    >
+                    <button type="submit" class="btn btn-primary">
+                        Wyślij
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <div class="card">
+            <div class="messages-header">
+                <h2>Wiadomości</h2>
+                <button id="refreshBtn" class="btn btn-secondary">
+                    🔄 Odśwież
+                </button>
+            </div>
+            <div id="messagesList" class="messages-list">
+                <div class="loading">Ładowanie wiadomości...</div>
+            </div>
+        </div>
+
+        <footer>
+            <p>
+                🚀 Deployed with Argo CD |
+                🐳 Built with Docker |
+                ☸️ Running on Kubernetes
+            </p>
+        </footer>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

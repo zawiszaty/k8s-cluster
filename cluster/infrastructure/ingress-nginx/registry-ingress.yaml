@@ -1,0 +1,41 @@
+# Container Registry Ingress
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: docker-registry
+  namespace: kube-system
+  annotations:
+    cert-manager.io/cluster-issuer: ca-issuer
+    nginx.ingress.kubernetes.io/proxy-body-size: "0"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "600"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - registry.local
+      secretName: registry-tls
+  rules:
+    - host: registry.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: kind-registry
+                port:
+                  number: 5000
+---
+# Service dla registry (żeby Ingress mógł się połączyć)
+apiVersion: v1
+kind: Service
+metadata:
+  name: kind-registry
+  namespace: kube-system
+spec:
+  type: ExternalName
+  externalName: kind-registry
+  ports:
+    - port: 5000
+      targetPort: 5000
