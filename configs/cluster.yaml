@@ -9,21 +9,23 @@ networking:
   podSubnet: "10.244.0.0/16"
   serviceSubnet: "10.96.0.0/12"
 
+# Local container registry
+containerdConfigPatches:
+  - |-
+    [plugins."io.containerd.grpc.v1.cri".registry.mirrors."localhost:5001"]
+      endpoint = ["http://kind-registry:5000"]
+
 nodes:
-  # Pojedynczy node (control-plane bez workerów)
+  # Single node (control-plane without workers)
   - role: control-plane
     image: kindest/node:v1.29.2
     extraPortMappings:
-      # Port mapping dla Ingress-NGINX - porty 80 i 443
+      # Port mapping for Ingress-NGINX - ports 80 and 443
       - containerPort: 80
         hostPort: 80
         protocol: TCP
       - containerPort: 443
         hostPort: 443
-        protocol: TCP
-      # Port dla local registry
-      - containerPort: 5001
-        hostPort: 5001
         protocol: TCP
     kubeadmConfigPatches:
       - |
@@ -39,7 +41,3 @@ nodes:
         scheduler:
           extraArgs:
             bind-address: "0.0.0.0"
-containerdConfigPatches:
-  - |-
-    [plugins."io.containerd.grpc.v1.cri".registry.mirrors."localhost:5001"]
-      endpoint = ["http://kind-registry:5001"]

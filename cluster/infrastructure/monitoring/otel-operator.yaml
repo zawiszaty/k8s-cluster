@@ -20,6 +20,9 @@ rules:
   - apiGroups: ["apps"]
     resources: ["deployments", "daemonsets", "replicasets", "statefulsets"]
     verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["coordination.k8s.io"]
+    resources: ["leases"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
   - apiGroups: ["opentelemetry.io"]
     resources: ["opentelemetrycollectors", "instrumentations"]
     verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
@@ -68,6 +71,8 @@ spec:
           env:
             - name: WATCH_NAMESPACE
               value: ""
+            - name: ENABLE_WEBHOOKS
+              value: "false"
           ports:
             - containerPort: 8080
               name: metrics

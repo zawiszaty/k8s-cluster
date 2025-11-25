@@ -35,39 +35,47 @@ fi
 
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "  Step 1a/9: Creating local container registry"
+echo "  Step 1/6: Creating local container registry"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-# Check if registry already exists
-if [ "$(docker ps -q -f name=kind-registry)" ]; then
-    echo "Registry already exists"
-else
-    echo "Creating local registry..."
-    docker run -d --restart=always -p 5001:5000 --name kind-registry registry:2
+# Create registry container if it doesn't exist
+if [ "$(docker inspect -f '{{.State.Running}}' kind-registry 2>/dev/null || true)" != 'true' ]; then
+  docker run -d --restart=always -p 5001:5000 --name kind-registry registry:2
 fi
-echo -e "${GREEN}✅ Registry ready on localhost:5001${NC}"
+
+echo -e "${GREEN}✅ Registry created${NC}"
 echo ""
 
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "  Step 1b/9: Creating KIND cluster"
+echo "  Step 2/6: Creating KIND cluster"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 kind create cluster --name platform --config "$PROJECT_DIR/configs/cluster.yaml"
 
-# Connect registry to KIND network
-echo "Connecting registry to KIND network..."
-if [ "$(docker inspect -f='{{json .NetworkSettings.Networks.kind}}' kind-registry)" = 'null' ]; then
-    docker network connect "kind" "kind-registry"
-fi
+# Connect registry to kind network
+docker network connect kind kind-registry 2>/dev/null || true
 
 # Remove taint from control-plane so pods can run
 echo "Removing taint from control-plane..."
 kubectl taint nodes --all node-role.kubernetes.io/control-plane:NoSchedule- || true
 kubectl taint nodes --all node-role.kubernetes.io/master:NoSchedule- || true
 
+# Document the local registry
+cat <<EOF | kubectl apply -f -
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: local-registry-hosting
+  namespace: kube-public
+data:
+  localRegistryHosting.v1: |
+    host: "localhost:5001"
+    help: "https://kind.sigs.k8s.io/docs/user/local-registry/"
+EOF
+
 echo -e "${GREEN}✅ Cluster created${NC}"
 echo ""
 
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "  Step 2/9: Installing Cilium CNI via CLI"
+echo "  Step 3/6: Installing Cilium CNI"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "Installing Cilium CLI..."
 cilium install \
@@ -85,7 +93,7 @@ echo -e "${GREEN}✅ Cilium installed${NC}"
 echo ""
 
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "  Step 3/9: Installing Ingress-NGINX"
+echo "  Step 4/6: Installing Ingress-NGINX"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 kubectl apply -f "$PROJECT_DIR/cluster/infrastructure/ingress-nginx/deploy.yaml"
 echo "Waiting for Ingress-NGINX to be ready..."
@@ -93,11 +101,12 @@ sleep 10
 kubectl wait --namespace ingress-nginx \
   --for=condition=available deployment/ingress-nginx-controller \
   --timeout=300s
+kubectl apply -f "$PROJECT_DIR/cluster/infrastructure/ingress-nginx/ingress-dashboards.yaml"
 echo -e "${GREEN}✅ Ingress-NGINX installed${NC}"
 echo ""
 
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "  Step 4/9: Installing cert-manager"
+echo "  Step 5/6: Installing cert-manager"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 kubectl apply -f "$PROJECT_DIR/cluster/infrastructure/cert-manager/cert-manager.yaml"
 echo "Waiting for cert-manager to be ready..."
@@ -114,7 +123,7 @@ echo -e "${GREEN}✅ cert-manager installed${NC}"
 echo ""
 
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "  Step 5/9: Installing Argo CD"
+echo "  Step 6/6: Installing Argo CD"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 kubectl create namespace argocd --dry-run=client -o yaml | kubectl apply -f -
 kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
@@ -126,70 +135,54 @@ kubectl wait --namespace argocd \
 echo -e "${GREEN}✅ Argo CD installed${NC}"
 echo ""
 
-echo "🔑 Argo CD Password:"
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "  Configuring Argo CD Applications"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+if [ -d "$PROJECT_DIR/cluster/infrastructure/argocd" ]; then
+    kubectl apply -f "$PROJECT_DIR/cluster/infrastructure/argocd/"
+    echo -e "${GREEN}✅ Argo CD Applications configured${NC}"
+    echo ""
+    echo -e "${BLUE}📦 Applications will be deployed by Argo CD:${NC}"
+    echo "  • Monitoring (Loki, Grafana, Tempo, OpenTelemetry)"
+    echo "  • Guestbook"
+    echo "  • Demo App"
+    echo "  • HotROD"
+else
+    echo -e "${YELLOW}⚠️  ArgoCD applications directory not found${NC}"
+fi
+echo ""
+
+echo "🔑 Argo CD Admin Password:"
 kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
 echo ""
 echo "Login: admin"
 echo ""
 
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "  Step 6/9: Installing monitoring (Loki + Grafana)"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-kubectl create namespace monitoring --dry-run=client -o yaml | kubectl apply -f -
-kubectl apply -f "$PROJECT_DIR/cluster/infrastructure/monitoring/loki.yaml"
-kubectl apply -f "$PROJECT_DIR/cluster/infrastructure/monitoring/promtail.yaml"
-kubectl apply -f "$PROJECT_DIR/cluster/infrastructure/monitoring/grafana.yaml"
-kubectl apply -f "$PROJECT_DIR/cluster/infrastructure/monitoring/grafana-dashboard.yaml"
-echo "Waiting for Grafana to be ready..."
-sleep 10
-kubectl wait --namespace monitoring \
-  --for=condition=available deployment/grafana \
-  --timeout=300s
-echo -e "${GREEN}✅ Monitoring installed${NC}"
-echo ""
-
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "  Step 7/9: Deploying Guestbook application"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-kubectl create namespace guestbook --dry-run=client -o yaml | kubectl apply -f -
-kubectl apply -f "$PROJECT_DIR/cluster/apps/guestbook/"
-echo -e "${GREEN}✅ Guestbook deployed${NC}"
-echo ""
-
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "  Step 8/9: Creating Ingress for dashboards"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-kubectl apply -f "$PROJECT_DIR/cluster/infrastructure/ingress-nginx/ingress-dashboards.yaml"
-echo -e "${GREEN}✅ Ingress created${NC}"
-echo ""
-
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "  Step 9/9: Configuring Argo CD Applications"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-if [ -d "$PROJECT_DIR/cluster/infrastructure/argocd" ]; then
-    kubectl apply -f "$PROJECT_DIR/cluster/infrastructure/argocd/"
-    echo -e "${GREEN}✅ Argo CD Applications configured${NC}"
-else
-    echo -e "${YELLOW}⚠️  argocd directory does not exist - skip${NC}"
-fi
-echo ""
-
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "  ✅ Installation completed!"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
-echo -e "${BLUE}📊 Dashboards available at:${NC}"
+echo -e "${BLUE}📊 Services will be available at (once deployed by ArgoCD):${NC}"
 echo "  • Argo CD:   https://argocd.local"
 echo "  • Grafana:   https://grafana.local (admin/admin)"
 echo "  • Hubble UI: https://hubble.local"
 echo "  • Guestbook: https://guestbook.local"
-echo "  • Registry:  https://registry.local"
+echo "  • Demo App:  https://demo.local"
+echo "  • HotROD:    http://hotrod.local"
 echo ""
 echo -e "${YELLOW}⚠️  Add to /etc/hosts:${NC}"
-echo "127.0.0.1 argocd.local grafana.local hubble.local guestbook.local registry.local demo.local demo-api.local"
+echo "127.0.0.1 argocd.local grafana.local hubble.local guestbook.local demo.local demo-api.local hotrod.local"
 echo ""
-echo -e "${BLUE}🐳 Local Registry:${NC}"
-echo "  • localhost:5001"
-echo "  • Test: docker tag myimage:tag localhost:5001/myimage:tag && docker push localhost:5001/myimage:tag"
+echo -e "${BLUE}🐳 Container Registry:${NC}"
+echo "  • Local registry available at: localhost:5001"
+echo "  • From within cluster: kind-registry:5000"
+echo "  • Tag images: docker tag myimage:latest localhost:5001/myimage:latest"
+echo "  • Push images: docker push localhost:5001/myimage:latest"
 echo ""
-echo -e "${GREEN}🎉 Cluster ready to use!${NC}"
+echo -e "${BLUE}📝 Next steps:${NC}"
+echo "  1. Monitor ArgoCD applications: kubectl get applications -n argocd"
+echo "  2. Check application status: kubectl get pods -A"
+echo "  3. Access ArgoCD UI at https://argocd.local"
+echo ""
+echo -e "${GREEN}🎉 Cluster infrastructure ready! Applications are being deployed by ArgoCD...${NC}"
