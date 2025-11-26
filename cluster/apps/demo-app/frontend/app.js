@@ -1,3 +1,52 @@
+// OpenTelemetry Configuration
+const OTEL_COLLECTOR_URL = 'http://otel-collector.monitoring.svc.cluster.local:4318/v1/traces';
+
+// Initialize OpenTelemetry (will be loaded from CDN in index.html)
+function initOpenTelemetry() {
+    if (typeof window.otel === 'undefined') {
+        console.warn('OpenTelemetry not loaded yet');
+        return;
+    }
+
+    const { WebTracerProvider, BatchSpanProcessor } = window.otel.sdk;
+    const { OTLPTraceExporter } = window.otel.exporter;
+    const { Resource } = window.otel.resources;
+    const { SemanticResourceAttributes } = window.otel.semanticConventions;
+    const { FetchInstrumentation, registerInstrumentations } = window.otel.instrumentation;
+
+    // Create resource
+    const resource = new Resource({
+        [SemanticResourceAttributes.SERVICE_NAME]: 'demo-frontend',
+        [SemanticResourceAttributes.SERVICE_VERSION]: '1.1.0',
+    });
+
+    // Create provider
+    const provider = new WebTracerProvider({ resource });
+
+    // Create exporter
+    const exporter = new OTLPTraceExporter({
+        url: OTEL_COLLECTOR_URL,
+    });
+
+    // Add batch processor
+    provider.addSpanProcessor(new BatchSpanProcessor(exporter));
+
+    // Register provider
+    provider.register();
+
+    // Register fetch instrumentation
+    registerInstrumentations({
+        instrumentations: [
+            new FetchInstrumentation({
+                propagateTraceHeaderCorsUrls: [/.*/],
+                clearTimingResources: true,
+            }),
+        ],
+    });
+
+    console.log('OpenTelemetry initialized for demo-frontend');
+}
+
 // Configuration
 const API_URL = window.location.hostname === 'localhost'
     ? 'http://localhost:8000'
@@ -180,6 +229,15 @@ setInterval(() => {
 
 // Initialization
 (async () => {
+    // Initialize OpenTelemetry if available
+    if (typeof window.otel !== 'undefined') {
+        try {
+            initOpenTelemetry();
+        } catch (error) {
+            console.error('Failed to initialize OpenTelemetry:', error);
+        }
+    }
+
     await checkApiStatus();
     await loadMessages(true); // Show loading state on initial load
 })();

@@ -48,17 +48,17 @@ echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "  Step 2/8: Building and pushing demo app images"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "Building demo-api image..."
+echo "Building demo-api image (with OpenTelemetry gRPC + Redis)..."
 docker build -t localhost:5001/demo-api:v1.1 "$PROJECT_DIR/cluster/apps/demo-app/api"
 echo "Pushing demo-api image..."
 docker push localhost:5001/demo-api:v1.1
 
-echo "Building demo-frontend image..."
+echo "Building demo-frontend image (with OpenTelemetry Web SDK)..."
 docker build -t localhost:5001/demo-frontend:v1.1 "$PROJECT_DIR/cluster/apps/demo-app/frontend"
 echo "Pushing demo-frontend image..."
 docker push localhost:5001/demo-frontend:v1.1
 
-echo -e "${GREEN}✅ Demo app images built and pushed${NC}"
+echo -e "${GREEN}✅ Demo app images built and pushed (API: OTEL+Redis, Frontend: OTEL Web)${NC}"
 echo ""
 
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"

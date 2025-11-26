@@ -5,6 +5,28 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Demo App - Message Board</title>
     <link rel="stylesheet" href="style.css">
+
+    <!-- OpenTelemetry Web SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@opentelemetry/api@1.7.0/build/esm/index.js" type="module"></script>
+    <script type="module">
+        import { trace } from 'https://cdn.jsdelivr.net/npm/@opentelemetry/api@1.7.0/build/esm/index.js';
+        import { WebTracerProvider } from 'https://cdn.jsdelivr.net/npm/@opentelemetry/sdk-trace-web@1.19.0/build/esm/index.js';
+        import { Resource } from 'https://cdn.jsdelivr.net/npm/@opentelemetry/resources@1.19.0/build/esm/index.js';
+        import { SemanticResourceAttributes } from 'https://cdn.jsdelivr.net/npm/@opentelemetry/semantic-conventions@1.19.0/build/esm/index.js';
+        import { BatchSpanProcessor } from 'https://cdn.jsdelivr.net/npm/@opentelemetry/sdk-trace-base@1.19.0/build/esm/index.js';
+        import { OTLPTraceExporter } from 'https://cdn.jsdelivr.net/npm/@opentelemetry/exporter-trace-otlp-http@0.46.0/build/esm/index.js';
+        import { FetchInstrumentation } from 'https://cdn.jsdelivr.net/npm/@opentelemetry/instrumentation-fetch@0.46.0/build/esm/index.js';
+        import { registerInstrumentations } from 'https://cdn.jsdelivr.net/npm/@opentelemetry/instrumentation@0.46.0/build/esm/index.js';
+
+        window.otel = {
+            api: { trace },
+            sdk: { WebTracerProvider, BatchSpanProcessor },
+            resources: { Resource },
+            semanticConventions: { SemanticResourceAttributes },
+            exporter: { OTLPTraceExporter },
+            instrumentation: { FetchInstrumentation, registerInstrumentations }
+        };
+    </script>
 </head>
 <body>
     <div class="container">
