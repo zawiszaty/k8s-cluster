@@ -89,6 +89,10 @@ cilium install \
   --set hubble.metrics.enabled="{dns,drop,tcp,flow,icmp,http}"
 echo "Waiting for Cilium to be ready..."
 cilium status --wait --wait-duration=5m
+
+# Apply Hubble UI ingress
+kubectl apply -f "$PROJECT_DIR/cluster/infrastructure/hubble-ingress/ingress.yaml"
+
 echo -e "${GREEN}✅ Cilium installed${NC}"
 echo ""
 
@@ -101,7 +105,6 @@ sleep 10
 kubectl wait --namespace ingress-nginx \
   --for=condition=available deployment/ingress-nginx-controller \
   --timeout=300s
-kubectl apply -f "$PROJECT_DIR/cluster/infrastructure/ingress-nginx/ingress-dashboards.yaml"
 echo -e "${GREEN}✅ Ingress-NGINX installed${NC}"
 echo ""
 
@@ -132,6 +135,10 @@ sleep 15
 kubectl wait --namespace argocd \
   --for=condition=available deployment/argocd-server \
   --timeout=300s
+
+# Apply ArgoCD ingress
+kubectl apply -f "$PROJECT_DIR/cluster/infrastructure/argocd-ingress/ingress.yaml"
+
 echo -e "${GREEN}✅ Argo CD installed${NC}"
 echo ""
 
@@ -153,10 +160,13 @@ else
 fi
 echo ""
 
-echo "🔑 Argo CD Admin Password:"
-kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
 echo ""
 echo "Login: admin"
+echo ""
+
+echo ""
+echo "🔑 Argo CD Admin Password:"
+kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
 echo ""
 
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
