@@ -4,6 +4,8 @@ from pydantic import BaseModel
 from datetime import datetime
 from typing import List
 import os
+import redis
+import json
 
 app = FastAPI(title="Demo API", version="1.0.0")
 
@@ -16,8 +18,19 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# In-memory storage
-messages: List[dict] = []
+# Redis connection
+REDIS_HOST = os.getenv("REDIS_HOST", "redis")
+REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
+
+redis_client = redis.Redis(
+    host=REDIS_HOST,
+    port=REDIS_PORT,
+    decode_responses=True,
+    socket_connect_timeout=5,
+    socket_timeout=5
+)
+
+MESSAGES_KEY = "demo:messages"
 
 class Message(BaseModel):
     text: str
@@ -36,11 +49,18 @@ def read_root():
 @app.get("/api/messages")
 def get_messages():
     """Get all messages"""
-    return {
-        "messages": messages,
-        "count": len(messages),
-        "timestamp": datetime.now().isoformat()
-    }
+    try:
+        # Get all messages from Redis list
+        messages_raw = redis_client.lrange(MESSAGES_KEY, 0, -1)
+        messages = [json.loads(msg) for msg in messages_raw]
+
+        return {
+            "messages": messages,
+            "count": len(messages),
+            "timestamp": datetime.now().isoformat()
+        }
+    except redis.RedisError as e:
+        raise HTTPException(status_code=503, detail=f"Redis connection error: {str(e)}")
 
 @app.post("/api/messages")
 def create_message(message: Message):
@@ -48,18 +68,26 @@ def create_message(message: Message):
     if not message.text or len(message.text.strip()) == 0:
         raise HTTPException(status_code=400, detail="Message text cannot be empty")
 
-    new_message = {
-        "id": len(messages) + 1,
-        "text": message.text,
-        "timestamp": datetime.now().isoformat(),
-        "hostname": os.getenv("HOSTNAME", "unknown")
-    }
-    messages.append(new_message)
+    try:
+        # Get current message count for ID
+        message_count = redis_client.llen(MESSAGES_KEY)
 
-    return {
-        "message": "Message created successfully",
-        "data": new_message
-    }
+        new_message = {
+            "id": message_count + 1,
+            "text": message.text,
+            "timestamp": datetime.now().isoformat(),
+            "hostname": os.getenv("HOSTNAME", "unknown")
+        }
+
+        # Store message in Redis list
+        redis_client.rpush(MESSAGES_KEY, json.dumps(new_message))
+
+        return {
+            "message": "Message created successfully",
+            "data": new_message
+        }
+    except redis.RedisError as e:
+        raise HTTPException(status_code=503, detail=f"Redis connection error: {str(e)}")
 
 @app.get("/health")
 def health_check():

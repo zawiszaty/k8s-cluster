@@ -1,11 +1,11 @@
 FROM nginx:alpine
 
-# Skopiuj pliki frontendu
+# Copy frontend files
 COPY --chmod=644 index.html /usr/share/nginx/html/
 COPY --chmod=644 style.css /usr/share/nginx/html/
 COPY --chmod=644 app.js /usr/share/nginx/html/
 
-# Konfiguracja nginx
+# Nginx configuration
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 # Health check

@@ -2,9 +2,9 @@ kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
 name: platform
 networking:
-  # Wyłączamy domyślny CNI - użyjemy Cilium
+  # Disable default CNI - we'll use Cilium
   disableDefaultCNI: true
-  # Wyłączamy kube-proxy - Cilium go zastąpi
+  # Disable kube-proxy - Cilium will replace it
   kubeProxyMode: "none"
   podSubnet: "10.244.0.0/16"
   serviceSubnet: "10.96.0.0/12"

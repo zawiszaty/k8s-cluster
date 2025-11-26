@@ -27,7 +27,7 @@ spec:
                 port:
                   number: 5000
 ---
-# Service dla registry (żeby Ingress mógł się połączyć)
+# Service for registry (so Ingress can connect)
 apiVersion: v1
 kind: Service
 metadata:

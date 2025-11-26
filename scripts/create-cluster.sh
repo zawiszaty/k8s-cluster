@@ -46,7 +46,23 @@ echo -e "${GREEN}✅ Registry created${NC}"
 echo ""
 
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "  Step 2/6: Creating KIND cluster"
+echo "  Step 2/8: Building and pushing demo app images"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "Building demo-api image..."
+docker build -t localhost:5001/demo-api:v1.1 "$PROJECT_DIR/cluster/apps/demo-app/api"
+echo "Pushing demo-api image..."
+docker push localhost:5001/demo-api:v1.1
+
+echo "Building demo-frontend image..."
+docker build -t localhost:5001/demo-frontend:v1.1 "$PROJECT_DIR/cluster/apps/demo-app/frontend"
+echo "Pushing demo-frontend image..."
+docker push localhost:5001/demo-frontend:v1.1
+
+echo -e "${GREEN}✅ Demo app images built and pushed${NC}"
+echo ""
+
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "  Step 3/7: Creating KIND cluster"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 kind create cluster --name platform --config "$PROJECT_DIR/configs/cluster.yaml"
 
@@ -75,7 +91,7 @@ echo -e "${GREEN}✅ Cluster created${NC}"
 echo ""
 
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "  Step 3/6: Installing Cilium CNI"
+echo "  Step 4/8: Installing Cilium CNI"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "Installing Cilium CLI..."
 cilium install \
@@ -97,7 +113,7 @@ echo -e "${GREEN}✅ Cilium installed${NC}"
 echo ""
 
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "  Step 4/6: Installing Ingress-NGINX"
+echo "  Step 5/8: Installing Ingress-NGINX"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 kubectl apply -f "$PROJECT_DIR/cluster/infrastructure/ingress-nginx/deploy.yaml"
 echo "Waiting for Ingress-NGINX to be ready..."
@@ -109,7 +125,7 @@ echo -e "${GREEN}✅ Ingress-NGINX installed${NC}"
 echo ""
 
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "  Step 5/6: Installing cert-manager"
+echo "  Step 6/8: Installing cert-manager"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 kubectl apply -f "$PROJECT_DIR/cluster/infrastructure/cert-manager/cert-manager.yaml"
 echo "Waiting for cert-manager to be ready..."
@@ -126,7 +142,7 @@ echo -e "${GREEN}✅ cert-manager installed${NC}"
 echo ""
 
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "  Step 6/7: Installing OpenTelemetry Operator"
+echo "  Step 7/8: Installing OpenTelemetry Operator"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 kubectl apply -f https://github.com/open-telemetry/opentelemetry-operator/releases/download/v0.91.0/opentelemetry-operator.yaml
 echo "Waiting for OpenTelemetry Operator to be ready..."
@@ -138,7 +154,7 @@ echo -e "${GREEN}✅ OpenTelemetry Operator installed${NC}"
 echo ""
 
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "  Step 7/7: Installing Argo CD"
+echo "  Step 8/8: Installing Argo CD"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 kubectl create namespace argocd --dry-run=client -o yaml | kubectl apply -f -
 kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml

@@ -30,11 +30,15 @@ async function checkApiStatus() {
 }
 
 // Load messages
-async function loadMessages() {
+async function loadMessages(showLoadingState = false) {
     if (isLoading) return;
 
     isLoading = true;
-    messagesList.innerHTML = '<div class="loading">Loading messages...</div>';
+
+    // Only show loading state on initial load, not during refresh
+    if (showLoadingState) {
+        messagesList.innerHTML = '<div class="loading">Loading messages...</div>';
+    }
 
     try {
         const response = await fetch(`${API_URL}/api/messages`);
@@ -167,15 +171,15 @@ refreshBtn.addEventListener('click', () => {
     loadMessages();
 });
 
-// Auto-refresh co 10 sekund
+// Auto-refresh every 10 seconds
 setInterval(() => {
     if (!isLoading) {
         loadMessages();
     }
 }, 10000);
 
-// Inicjalizacja
+// Initialization
 (async () => {
     await checkApiStatus();
-    await loadMessages();
+    await loadMessages(true); // Show loading state on initial load
 })();

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pl">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -15,22 +15,22 @@
 
         <div class="api-status" id="apiStatus">
             <div class="status-indicator"></div>
-            <span>Sprawdzam status API...</span>
+            <span>Checking API status...</span>
         </div>
 
         <div class="card">
-            <h2>Dodaj wiadomość</h2>
+            <h2>Add Message</h2>
             <form id="messageForm">
                 <div class="form-group">
                     <input
                         type="text"
                         id="messageInput"
-                        placeholder="Wpisz swoją wiadomość..."
+                        placeholder="Enter your message..."
                         required
                         autocomplete="off"
                     >
                     <button type="submit" class="btn btn-primary">
-                        Wyślij
+                        Send
                     </button>
                 </div>
             </form>
@@ -38,13 +38,13 @@
 
         <div class="card">
             <div class="messages-header">
-                <h2>Wiadomości</h2>
+                <h2>Messages</h2>
                 <button id="refreshBtn" class="btn btn-secondary">
-                    🔄 Odśwież
+                    🔄 Refresh
                 </button>
             </div>
             <div id="messagesList" class="messages-list">
-                <div class="loading">Ładowanie wiadomości...</div>
+                <div class="loading">Loading messages...</div>
             </div>
         </div>
 

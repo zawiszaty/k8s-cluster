@@ -69,44 +69,21 @@ open https://demo.local         # Demo application
 ┌─────────────────────────────────────────────────────────────┐
 │                       KIND Cluster                          │
 │                                                             │
-│  ┌─────────────┐  ┌──────────────┐  ┌─────────────────┐  │
-│  │   Argo CD   │  │   Cilium     │  │ Ingress-NGINX  │  │
-│  │   (GitOps)  │  │  (CNI+SM)    │  │   (Ingress)    │  │
-│  └─────────────┘  └──────────────┘  └─────────────────┘  │
+│  ┌─────────────┐  ┌──────────────┐  ┌─────────────────┐     │
+│  │   Argo CD   │  │   Cilium     │  │ Ingress-NGINX   │     │
+│  │   (GitOps)  │  │  (CNI+SM)    │  │   (Ingress)     │     │
+│  └─────────────┘  └──────────────┘  └─────────────────┘     │
 │                                                             │
-│  ┌──────────────────────────────────────────────────────┐ │
-│  │              Applications (Namespaces)               │ │
-│  │  • guestbook   • hotrod   • monitoring   • demo-app │ │
-│  └──────────────────────────────────────────────────────┘ │
+│  ┌──────────────────────────────────────────────────────┐   │
+│  │              Applications (Namespaces)               │   │
+│  │  • guestbook   • hotrod   • monitoring   • demo-app  │   │ 
+│  └──────────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────────┘
         ↑                           ↑
         │                           │
    Git Repo                  Local Registry
    (GitHub)                  (localhost:5001)
 ```
-
-## 🚀 Deploy Demo Application
-
-The demo app showcases a modern microservices architecture with Python FastAPI backend and responsive frontend.
-
-```bash
-# 1. Build images
-./scripts/build-demo-app.sh
-
-# 2. Deploy via Argo CD (recommended)
-kubectl apply -f cluster/infrastructure/argocd/demo-app.yaml
-
-# 3. Access the app
-open https://demo.local
-open https://demo-api.local/docs  # FastAPI Swagger UI
-```
-
-**Demo App Features:**
-- RESTful API with 2 endpoints (GET/POST messages)
-- Modern responsive UI with auto-refresh
-- Health checks and probes
-- CORS configured
-- Ready for production
 
 
 ## 📝 License
@@ -125,5 +102,3 @@ MIT License - feel free to use for learning and development.
 ✅ **Demo applications** - Learn by example
 ✅ **Production patterns** - Security, monitoring, GitOps
 ✅ **Comprehensive docs** - Everything you need to know
-
-**Ready to deploy your apps? Start with the Quick Start above!** 🚀
