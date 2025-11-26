@@ -126,7 +126,19 @@ echo -e "${GREEN}✅ cert-manager installed${NC}"
 echo ""
 
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "  Step 6/6: Installing Argo CD"
+echo "  Step 6/7: Installing OpenTelemetry Operator"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+kubectl apply -f https://github.com/open-telemetry/opentelemetry-operator/releases/download/v0.91.0/opentelemetry-operator.yaml
+echo "Waiting for OpenTelemetry Operator to be ready..."
+sleep 10
+kubectl wait --namespace opentelemetry-operator-system \
+  --for=condition=available deployment/opentelemetry-operator-controller-manager \
+  --timeout=300s
+echo -e "${GREEN}✅ OpenTelemetry Operator installed${NC}"
+echo ""
+
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "  Step 7/7: Installing Argo CD"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 kubectl create namespace argocd --dry-run=client -o yaml | kubectl apply -f -
 kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
