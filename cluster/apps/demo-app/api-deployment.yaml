@@ -30,6 +30,12 @@ spec:
               value: "redis"
             - name: REDIS_PORT
               value: "6379"
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: "http://otel-collector.monitoring.svc.cluster.local:4318"
+            - name: OTEL_SERVICE_NAME
+              value: "demo-api"
+            - name: ENVIRONMENT
+              value: "production"
           livenessProbe:
             httpGet:
               path: /health
