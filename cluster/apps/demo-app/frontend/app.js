@@ -1,10 +1,10 @@
 // OpenTelemetry Configuration
-const OTEL_COLLECTOR_URL = 'http://otel-collector.monitoring.svc.cluster.local:4318/v1/traces';
+const OTEL_COLLECTOR_URL = 'https://otel-collector.local/v1/traces';
 
 // Initialize OpenTelemetry (will be loaded from CDN in index.html)
 function initOpenTelemetry() {
-    if (typeof window.otel === 'undefined') {
-        console.warn('OpenTelemetry not loaded yet');
+    if (typeof window.otel === 'undefined' || window.otel === null) {
+        console.log('OpenTelemetry frontend tracing disabled - using backend tracing only');
         return;
     }
 

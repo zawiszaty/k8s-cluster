@@ -1,4 +1,26 @@
+# Build stage - Build OpenTelemetry bundle with webpack
+FROM node:18-alpine AS builder
+
+WORKDIR /build
+
+# Copy package files
+COPY package.json package-lock.json* ./
+
+# Install dependencies
+RUN npm install
+
+# Copy source files
+COPY webpack.config.js ./
+COPY src/ ./src/
+
+# Build the bundle
+RUN npm run build
+
+# Production stage - Serve with nginx
 FROM nginx:alpine
+
+# Copy built bundle
+COPY --from=builder --chmod=644 /build/dist/otel-bundle.js /usr/share/nginx/html/
 
 # Copy frontend files
 COPY --chmod=644 index.html /usr/share/nginx/html/
