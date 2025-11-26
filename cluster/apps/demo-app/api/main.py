@@ -32,8 +32,9 @@ def configure_opentelemetry():
     # Configure OTLP exporter
     otlp_endpoint = os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
     if otlp_endpoint:
+        # Note: OTLPSpanExporter automatically appends /v1/traces to the endpoint
         otlp_exporter = OTLPSpanExporter(
-            endpoint=f"{otlp_endpoint}/v1/traces",
+            endpoint=otlp_endpoint,
         )
         tracer_provider.add_span_processor(BatchSpanProcessor(otlp_exporter))
 
